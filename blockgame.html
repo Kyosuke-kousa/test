@@ -1,0 +1,264 @@
+<!doctype html>
+<html>
+    <body>
+        <script>
+            // Javascriptでグラフィックを描画できる機能を提供してくれる。
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = 400;
+            canvas.height = 400;
+            // ゲーム画面をブロック要素にしてからマージンを指定して中央に設定する。
+            canvas.setAttribute('style','display:block;margin:auto;background-color: #ddd');
+            document.body.appendChild(canvas);
+
+            let ball = {
+                x: null,
+                y: null,
+                width: 5,
+                height: 5,
+                speed: 5,
+                dx: null,
+                dy: null,
+                update: function() {
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.fill();
+
+                    if(this.x < 0 || this.x > canvas.width) this.dx *= -1;
+                    if(this.y < 0) this.dy *= -1;
+                    
+                    this.x += this.dx;
+                    this.y += this.dy;
+                }
+            }
+            const paddle = {
+                x: null,
+                y: null,
+                width: 100,
+                height: 15,
+                speed: 0,
+
+                update: function() {
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.fill();
+
+                    this.x += this.speed;
+                }
+            }
+            const block = {
+                width: null,
+                height: 20,
+                data: [],
+                
+                length:[],//追加点
+                update: function() {
+                    this.data.forEach(brick => {
+                        ctx.strokeStyle = "#009900"
+                        ctx.shadowColor = '#d53';
+                        ctx.strokeRect(brick.x, brick.y, brick.width, brick.height);
+                        //ctx.stroke();
+                        //ctx.fillStyle = "#009900";
+                    })
+                }
+            }
+            const level = [
+                [0,0,1,0,0,1,0],
+                [0,0,1,0,0,1,0],
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,1,0,1,0],
+                [1,1,1,1,1,1,1,1,1]
+
+            ]
+
+            // 初期値
+            const init = () => {
+                paddle.x = canvas.width /2 -paddle.width / 2;
+                paddle.y = canvas.height - paddle.height;
+
+                ball.x = canvas.width / 2;
+                ball.y = canvas.height - paddle.height;
+                ball.dx = ball.speed;
+                ball.dy = ball.speed * -1;
+
+                
+
+                //変更点
+                for(let t=0; t<level.length; t++){
+                    block.length.push(level[t].length);
+                    console.log(level[t].length);
+                }
+                console.log(Math.max(...block.length));
+                block.width = canvas.width / Math.max(...block.length);//level[0].length
+                //
+
+                for(let i=0; i<level.length; i++){
+                    for(let j=0; j<level[i].length; j++){
+                        if(level[i][j]){
+                            block.data.push({
+                                x: block.width * j,
+                                y: block.height * i,
+                                width: block.width,
+                                height: block.height
+                            })
+                        }    
+                    }
+                    console.log(block.data);
+                }
+            }
+            //得点表示用関数
+            var score =0;
+            function drawScore(){
+                ctx.font ="16px Arial";
+                ctx.fillText("Score:"+ score,8,20)
+            }
+            // 衝突
+            //const collide = (obj1, obj2) => {
+                //return obj1.x < obj2.x + obj2.width &&
+                        //obj2.x < obj1.x + obj1.width &&
+                        //obj1.y < obj2.y + obj2.height &&
+                        //obj2.y < obj1.y + obj1.height
+            //}
+
+            //衝突判定
+                const distance = (x0,y0,x1,y1)=>
+                    Math.sqrt( Math.pow( x1-x0, 2 ) + Math.pow( y1-y0, 2 ) ) ;
+
+				const collide = (ball, smth)=>{
+					return (smth.x<ball.x && 
+							ball.x<smth.x+smth.width &&
+							smth.y<ball.y &&
+							ball.y<smth.y+smth.height
+							)
+						|| (smth.x<ball.x+ball.width && 
+							ball.x+ball.width<smth.x+smth.width &&
+							smth.y<ball.y &&
+							ball.y<smth.y+smth.height
+							)
+						|| (smth.x<ball.x && 
+							ball.x<smth.x+smth.width &&
+							smth.y<ball.y+ball.height &&
+							ball.y+ball.height<smth.y+smth.height
+							)
+						|| (smth.x<ball.x+ball.width && 
+							ball.x+ball.width<smth.x+smth.width &&
+							smth.y<ball.y+ball.height &&
+							ball.y+ball.height<smth.y+smth.height
+							)
+                }
+            // 実行
+            const loop = () => {
+                // 指定した範囲の描画を削除する。
+                ctx.clearRect(0,0,canvas.width,canvas.height)
+
+                // 繰り返し描画
+                paddle.update();
+                ball.update();
+                block.update();
+                
+                //得点表示
+                drawScore();
+                
+                // 下辺にあたるとゲーム終了
+                if(ball.y > canvas.height) return;
+
+
+                    
+                if( collide(ball,paddle) ){
+
+                    // 変な挙動をなくす
+                    ball.y = paddle.y - ball.height;
+                    console.log((((ball.y+ball.height)/2)-((paddle.y+paddle.height)/2)),(((ball.x+ball.width)/2)-((paddle.x+paddle.width)/2)))
+                    if( (Math.abs(((ball.y+ball.height)/2)-((paddle.y+paddle.height)/2))>Math.abs(((ball.x+ball.width)/2)-((paddle.x+paddle.width)/2))) ){
+                        ball.dx *= -1;
+                    }else{
+                    // 当たったら反転
+                    ball.dy *= -1;
+                    }
+                };
+
+
+                if(block.data.length){
+                    block.data.forEach((brick, index) => {
+                         //条件
+
+                        let termA=	(brick.x<ball.x && 
+                                ball.x<brick.x+brick.width &&
+                                brick.y<ball.y &&
+                                ball.y<brick.y+brick.height
+                                )
+
+                        let termB= (brick.x<ball.x+ball.width && 
+                                    ball.x+ball.width<brick.x+brick.width &&
+                                    brick.y<ball.y &&
+                                    ball.y<brick.y+brick.height
+                                    )
+                        let termC=	(brick.x<ball.x && 
+                                    ball.x<brick.x+brick.width &&
+                                    brick.y<ball.y+ball.height &&
+                                    ball.y+ball.height<brick.y+brick.height
+                                    )
+                        let termD = (brick.x<ball.x+ball.width && 
+                                    ball.x+ball.width<brick.x+brick.width &&
+                                    brick.y<ball.y+ball.height &&
+                                    ball.y+ball.height<brick.y+brick.height
+                                    )
+                        //角近くで遅くする
+                        if(distance(brick.x+brick.width,brick.y+brick.height,ball.x,ball.y)<60
+			                ||distance(brick.x+brick.width,brick.y,ball.x,ball.y+ball.height)<60 
+			                ||distance(brick.x,brick.y,ball.x+ball.width,ball.y+ball.height)<60 
+			                ||distance(brick.x,brick.y+brick.height,ball.x+ball.width,ball.y)<60){
+                                ball.dx = ball.dx<0?-1:1;
+                                ball.dy = ball.dy<0?-1:1;
+
+                            if(collide(ball, brick)){
+                                // ブロックを削除
+                                block.data.splice(index, 1);
+                                this.score += 5;
+                                //
+                                console.log(distance(brick.x+brick.width,brick.y+brick.height,ball.x,ball.y))
+                                console.log(distance(brick.x+brick.width,brick.y,ball.x,ball.y+ball.height))
+                                console.log(distance(brick.x,brick.y,ball.x+ball.width,ball.y+ball.height))
+                                console.log(distance(brick.x,brick.y+brick.height,ball.x+ball.width,ball.y))
+                                //側面判定
+                                if(	(termA && termC) ||	(termB&&termD)){
+                                    ball.dx *= -1;
+                                }
+                                //角判定（ボールの角一点だけがブロックに入る）
+                                else if((termA && !termB &&!termC)
+                                        || (termB && !termA &&!termD)
+                                        || (termC && !termA &&!termD)
+                                        || (termD && !termB &&!termC)){ 
+                                            ball.dx *= -1;
+                                            ball.dy *= -1;
+                                }else{
+                                    // 当たったら反転
+                                    ball.dy *= -1;
+                                }
+
+                            }
+
+                        }else{
+                            ball.dx = ball.dx<0?-5:5;
+                            ball.dy = ball.dy<0?-5:5;
+                        }
+                    })
+                }else {
+                    return;
+                }
+                
+                // ブラウザの最適なタイミングで繰り返し処理を実行できる
+                window.requestAnimationFrame(loop);
+            }
+
+            init();
+            loop();
+
+            document.addEventListener('keydown', e => {
+                if(e.key === 'ArrowLeft') paddle.speed = -6;
+                if(e.key === 'ArrowRight') paddle.speed = 6;
+            });
+            document.addEventListener('keyup', () => paddle.speed = 0);
+
+        </script>
+    </body>
+</html>
